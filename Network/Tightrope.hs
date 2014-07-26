@@ -5,7 +5,16 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Network.Tightrope where
+module Network.Tightrope (
+  Slack,
+  Command,
+  User(..), Channel(..), Icon(..), Room(..),
+  say, bot, defaultMessage,
+  Account(..),
+  source, user, name, text,
+  iconEmoji, destination, username,
+  liftIO
+) where
 import qualified Network.Wai as Wai
 import qualified Network.Wreq as Wreq
 import           Control.Lens hiding ((.=))
@@ -25,14 +34,13 @@ import           Control.Monad.Reader (MonadReader, MonadIO, ReaderT, liftIO, as
 import           Control.Applicative (Applicative)
 import           Data.Monoid (mconcat)
 
-newtype User = User Text
-newtype Channel = Channel Text
-newtype Icon = Icon Text
-newtype Token = Token String
+newtype User = User Text deriving (Show, Eq, Ord)
+newtype Channel = Channel Text deriving (Show, Eq, Ord)
+newtype Icon = Icon Text deriving (Show, Eq, Ord)
 
-type Destination = Either Channel User
+data Room = Public Channel | Private User deriving (Show, Eq, Ord)
 
-data Command = Command { _commandChannel :: Channel
+data Command = Command { _commandSource :: Room
                        , _commandUser :: User
                        , _commandName :: Text
                        , _commandText :: Text
@@ -40,13 +48,26 @@ data Command = Command { _commandChannel :: Channel
 $(makeFields ''Command)
 
 data Message = Message { _messageIconEmoji :: Icon
-                       , _messageDestination :: Destination
+                       , _messageDestination :: Room
                        , _messageUsername :: Text
                        , _messageText :: Text
                        }
 $(makeFields ''Message)
 
-data Account = Account String String
+defaultMessage :: Message
+defaultMessage = Message { _messageIconEmoji = Icon "ghost"
+                         , _messageDestination = Public (Channel "general")
+                         , _messageUsername = "Tightrope Bot"
+                         , _messageText = "I love Tightrope"
+                         }
+
+type Token = String
+type Url = String
+data Account = Account Token Url
+
+instance Aeson.ToJSON Room where
+  toJSON (Private u) = Aeson.toJSON u
+  toJSON (Public c) = Aeson.toJSON c
 
 instance Aeson.ToJSON User where
   toJSON (User u) = Aeson.String (Text.append "@" u)
@@ -64,33 +85,37 @@ instance Aeson.ToJSON Message where
                           , "text" .= (m ^. text)
                           ]
 
-newtype Slack m = Slack { runSlack :: ReaderT Account IO m }
+newtype Slack m = Slack (ReaderT Account IO m)
   deriving (Functor, Applicative, Monad, MonadIO, MonadReader Account)
 
 say :: Message -> Slack (Wreq.Response ByteString)
-say message = do
+say msg = do
   Account token path <- ask
   let opts = Wreq.defaults & Wreq.param "token" .~ [Text.pack token]
-  liftIO $ Wreq.postWith opts path (Aeson.toJSON message)
+  liftIO $ Wreq.postWith opts path (Aeson.toJSON msg)
+
+roomFromText :: User -> Text -> Room
+roomFromText u "directmessage" = Private u
+roomFromText _ channelName = Public (Channel channelName)
 
 parseCommand :: Wai.Request -> IO Command
 parseCommand req = do
   (paramList, _) <- WaiParse.parseRequestBody WaiParse.lbsBackEnd req
   let params = Map.fromList paramList
       decode = StrictEncoding.decodeUtf8 . (params !)
+      requestor = User (decode "user_name")
 
-  return Command { _commandChannel = Channel (decode "channel_name")
-                 , _commandUser = User (decode "user_name")
+  return Command { _commandSource = roomFromText requestor (decode "channel_name")
+                 , _commandUser = requestor
                  , _commandName = decode "command"
                  , _commandText = decode "text"
                  }
 
-bot :: String -> (Command -> Slack Text) -> Wai.Application
-bot token handler req res = do
+bot :: Account -> (Command -> Slack Text) -> Wai.Application
+bot acc handler req res = do
   command <- parseCommand req
   let (Slack m) = handler command
   responseText <- liftIO $ runReaderT m acc
   let responseBytes = LazyEncoding.encodeUtf8 (fromStrict responseText)
   res $ Wai.responseLBS status200 [contentType] responseBytes
   where contentType = ("Content-Type", "text/plain; charset=utf-8")
-        acc = Account token "bar"
