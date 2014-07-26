@@ -58,14 +58,11 @@ instance Aeson.ToJSON Icon where
   toJSON (Icon i) = Aeson.String (mconcat [":", i, ":"])
 
 instance Aeson.ToJSON Message where
-  toJSON m = Aeson.object [ destPair
+  toJSON m = Aeson.object [ "channel" .= (m ^. destination)
                           , "icon_emoji" .= (m ^. iconEmoji)
                           , "username" .= (m ^. username)
                           , "text" .= (m ^. text)
                           ]
-    where destPair = case m ^. destination of
-            Left c -> "channel" .= c
-            Right u -> "channel" .= u
 
 newtype Slack m = Slack { runSlack :: ReaderT Account IO m }
   deriving (Functor, Applicative, Monad, MonadIO, MonadReader Account)
