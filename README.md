@@ -63,6 +63,7 @@ That's okay! I don't either. But I've been having a lot of fun making bots *anyw
 # Examples
 
 - [jpg2bot](https://github.com/ianthehenry/jpg2bot)
+- [memebot](https://github.com/ianthehenry/memegen)
 
 # Contributors
 
