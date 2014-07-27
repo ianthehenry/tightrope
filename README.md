@@ -36,10 +36,8 @@ echo command = do
     -- But here we're just gonna post a message to the room the request
     -- came in on.
 
-    say $ message (Icon "ghost")
-                  "Echobot"
-                  (command ^. text)
-                  (command ^. source)
+    let msg = message (Icon "ghost") "Echobot" (command ^. text)
+    say msg (command ^. source)
 
     return "echoing, be patient..."
 
