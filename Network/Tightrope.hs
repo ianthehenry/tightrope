@@ -7,7 +7,7 @@
 
 module Network.Tightrope (
   Slack,
-  Command,
+  Command, Message,
   User(..), Channel(..), Icon(..), Room(..),
   say, bot, message, defaultMessage,
   Account(..),

@@ -1,5 +1,5 @@
 name:                tightrope
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Nice API for a Slackbot
 description:         Making bots for Slack is hard! But wait: now it's easy.
 license:             MIT
