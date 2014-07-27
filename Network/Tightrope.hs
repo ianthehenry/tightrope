@@ -9,7 +9,7 @@ module Network.Tightrope (
   Slack,
   Command,
   User(..), Channel(..), Icon(..), Room(..),
-  say, bot, defaultMessage,
+  say, bot, message, defaultMessage,
   Account(..),
   source, user, name, text,
   iconEmoji, destination, username,
@@ -55,11 +55,19 @@ data Message = Message { _messageIconEmoji :: Icon
 $(makeFields ''Message)
 
 defaultMessage :: Message
-defaultMessage = Message { _messageIconEmoji = Icon "ghost"
-                         , _messageDestination = Public (Channel "general")
-                         , _messageUsername = "Tightrope Bot"
-                         , _messageText = "I love Tightrope"
-                         }
+defaultMessage = message
+                 (Icon "ghost")
+                 "Tightrope Bot"
+                 "I love Tightrope"
+                 (Public $ Channel "general")
+                 
+message :: Icon -> Text -> Text -> Room -> Message
+message icon username text room =
+  Message { _messageIconEmoji = icon
+          , _messageDestination = room
+          , _messageUsername = username
+          , _messageText = text
+          }
 
 type Token = String
 type Url = String
