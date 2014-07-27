@@ -11,13 +11,14 @@ module Network.Tightrope (
   User(..), Channel(..), Icon(..), Room(..),
   say, bot, message, defaultMessage,
   Account(..),
-  source, user, name, text,
-  iconEmoji, destination, username,
+  source, user, name,
+  text,
+  iconEmoji, username,
   liftIO
 ) where
 import qualified Network.Wai as Wai
 import qualified Network.Wreq as Wreq
-import           Control.Lens hiding ((.=))
+import           Control.Lens (makeFields, (^.), (&), (.~))
 import qualified Data.Aeson as Aeson
 import           Data.Aeson ((.=))
 import           Data.Text (Text)
@@ -48,7 +49,6 @@ data Command = Command { _commandSource :: Room
 $(makeFields ''Command)
 
 data Message = Message { _messageIconEmoji :: Icon
-                       , _messageDestination :: Room
                        , _messageUsername :: Text
                        , _messageText :: Text
                        }
@@ -59,14 +59,12 @@ defaultMessage = message
                  (Icon "ghost")
                  "Tightrope Bot"
                  "I love Tightrope"
-                 (Public $ Channel "general")
                  
-message :: Icon -> Text -> Text -> Room -> Message
-message icon username text room =
-  Message { _messageIconEmoji = icon
-          , _messageDestination = room
-          , _messageUsername = username
-          , _messageText = text
+message :: Icon -> Text -> Text -> Message
+message i u t =
+  Message { _messageIconEmoji = i
+          , _messageUsername = u
+          , _messageText = t
           }
 
 type Token = String
@@ -86,21 +84,19 @@ instance Aeson.ToJSON Channel where
 instance Aeson.ToJSON Icon where
   toJSON (Icon i) = Aeson.String (mconcat [":", i, ":"])
 
-instance Aeson.ToJSON Message where
-  toJSON m = Aeson.object [ "channel" .= (m ^. destination)
-                          , "icon_emoji" .= (m ^. iconEmoji)
-                          , "username" .= (m ^. username)
-                          , "text" .= (m ^. text)
-                          ]
-
 newtype Slack m = Slack (ReaderT Account IO m)
   deriving (Functor, Applicative, Monad, MonadIO, MonadReader Account)
 
-say :: Message -> Slack (Wreq.Response ByteString)
-say msg = do
+say :: Message -> Room -> Slack (Wreq.Response ByteString)
+say msg room = do
   Account token path <- ask
   let opts = Wreq.defaults & Wreq.param "token" .~ [Text.pack token]
-  liftIO $ Wreq.postWith opts path (Aeson.toJSON msg)
+  liftIO $ Wreq.postWith opts path (Aeson.toJSON payload)
+  where payload = Aeson.object [ "channel" .= room
+                               , "icon_emoji" .= (msg ^. iconEmoji)
+                               , "username" .= (msg ^. username)
+                               , "text" .= (msg ^. text)
+                               ]
 
 roomFromText :: User -> Text -> Room
 roomFromText u "directmessage" = Private u

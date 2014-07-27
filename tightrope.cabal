@@ -1,5 +1,5 @@
 name:                tightrope
-version:             0.1.0.1
+version:             0.2.0.0
 synopsis:            Nice API for a Slackbot
 description:         Making bots for Slack is hard! But wait: now it's easy.
 license:             MIT
@@ -9,7 +9,7 @@ maintainer:          ianthehenry@gmail.com
 -- copyright:
 category:            Web
 build-type:          Simple
--- extra-source-files:
+extra-source-files:  changelog.md
 cabal-version:       >=1.10
 
 source-repository head
@@ -22,11 +22,11 @@ library
   -- other-extensions:
   build-depends:       wai-extra == 3.*,
                        base == 4.*,
-                       wai,
-                       wreq,
-                       aeson,
+                       wai == 3.*,
+                       wreq == 0.1.*,
+                       aeson == 0.8.*,
                        bytestring,
-                       lens,
+                       lens == 4.3.*,
                        mtl,
                        text,
                        containers,
